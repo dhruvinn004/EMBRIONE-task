@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/client'
 
 const INITIAL_MOCK_PROFILES = [
   {
@@ -13,10 +14,10 @@ const INITIAL_MOCK_PROFILES = [
     branch: 'CSE',
     semester: '5',
     email: 'aarav@pes.edu',
-    linkedin: 'https://linkedin.com',
-    github: 'https://github.com',
+    linkedin_url: 'https://linkedin.com',
+    github_url: 'https://github.com',
     bio: 'Full-stack architect building scalable web applications and managing tech infrastructure for Embrione.',
-    avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
+    photo_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
     status: 'approved',
   },
   {
@@ -28,10 +29,10 @@ const INITIAL_MOCK_PROFILES = [
     branch: 'AIML',
     semester: '5',
     email: 'ananya@pes.edu',
-    linkedin: 'https://linkedin.com',
-    github: 'https://github.com',
+    linkedin_url: 'https://linkedin.com',
+    github_url: 'https://github.com',
     bio: 'UI/UX enthusiast crafting immersive brand identities, promotional graphics, and clean user experiences.',
-    avatar_url: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&auto=format&fit=crop&q=80',
+    photo_url: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&auto=format&fit=crop&q=80',
     status: 'approved',
   },
   {
@@ -43,10 +44,10 @@ const INITIAL_MOCK_PROFILES = [
     branch: 'ECE',
     semester: '7',
     email: 'rohan@pes.edu',
-    linkedin: 'https://linkedin.com',
-    github: 'https://github.com',
+    linkedin_url: 'https://linkedin.com',
+    github_url: 'https://github.com',
     bio: 'Handling venue management, equipment flows, and ground operations to ensure seamless event execution.',
-    avatar_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80',
+    photo_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80',
     status: 'approved',
   },
   {
@@ -58,10 +59,10 @@ const INITIAL_MOCK_PROFILES = [
     branch: 'ME',
     semester: '3',
     email: 'sneha@pes.edu',
-    linkedin: 'https://linkedin.com',
-    github: 'https://github.com',
+    linkedin_url: 'https://linkedin.com',
+    github_url: 'https://github.com',
     bio: 'Connecting with corporate partners, pitching proposals, and securing financial backing for the festival.',
-    avatar_url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80',
+    photo_url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80',
     status: 'approved',
   },
   {
@@ -73,10 +74,10 @@ const INITIAL_MOCK_PROFILES = [
     branch: 'EEE',
     semester: '5',
     email: 'karan@pes.edu',
-    linkedin: 'https://linkedin.com',
-    github: 'https://github.com',
+    linkedin_url: 'https://linkedin.com',
+    github_url: 'https://github.com',
     bio: 'Coordinating cross-domain workflows, participant check-ins, and on-ground crisis management.',
-    avatar_url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&auto=format&fit=crop&q=80',
+    photo_url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&auto=format&fit=crop&q=80',
     status: 'approved',
   },
 ]
@@ -105,15 +106,12 @@ interface SeaCreature {
 }
 
 export default function TeamDirectoryPage() {
-  const [members, setMembers] = useState<any[]>([])
+  const [members, setMembers] = useState<any[]>(INITIAL_MOCK_PROFILES)
   const [selectedDomain, setSelectedDomain] = useState('All')
   const [selectedPosition, setSelectedPosition] = useState('All')
   const [searchQuery, setSearchQuery] = useState('')
 
-  // Mouse & Eywa Particles
   const [eywaSeeds, setEywaSeeds] = useState<EywaSeed[]>([])
-
-  // Autonomous Swimming Creatures State
   const [creatures, setCreatures] = useState<SeaCreature[]>([
     { id: 'whale', name: 'Glow Whale', x: 100, y: 180, vx: 0.8, vy: 0.2, facingRight: true },
     { id: 'manta', name: 'Sea Manta', x: 700, y: 350, vx: -0.9, vy: -0.3, facingRight: false },
@@ -122,6 +120,7 @@ export default function TeamDirectoryPage() {
     { id: 'jelly1', name: 'Eywa Jelly', x: 200, y: 400, vx: 0.3, vy: -0.6, facingRight: true },
   ])
 
+  // Mouse & Eywa Particles
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (Math.random() < 0.6) {
@@ -142,7 +141,7 @@ export default function TeamDirectoryPage() {
     return () => window.removeEventListener('mousemove', handleMouseMove)
   }, [])
 
-  // Swimming Loop Across Full Screen Boundaries
+  // Swimming Creatures Loop
   useEffect(() => {
     const animationTimer = setInterval(() => {
       setCreatures((prev) =>
@@ -196,35 +195,33 @@ export default function TeamDirectoryPage() {
     return () => clearInterval(timer)
   }, [])
 
-  // Guaranteed Profile Sync with LocalStorage
+  // Fetch from Supabase with Fallback to Mocks
   useEffect(() => {
-    const stored = localStorage.getItem('team_members')
-    let currentMembers: any[] = []
+    async function fetchApprovedMembers() {
+      try {
+        const supabase = createClient()
+        const { data, error } = await supabase
+          .from('members')
+          .select('*')
+          .eq('status', 'approved')
 
-    try {
-      currentMembers = stored ? JSON.parse(stored) : []
-    } catch (e) {
-      currentMembers = []
+        if (!error && data && data.length > 0) {
+          // Combine DB approved members with mock profiles
+          setMembers([...INITIAL_MOCK_PROFILES, ...data])
+        }
+      } catch (err) {
+        console.warn('Supabase fetch skipped or offline, using mock profiles.')
+      }
     }
 
-    // Ensure all initial mock profiles are present
-    const existingIds = new Set(currentMembers.map((m: any) => m.id))
-    const missingMocks = INITIAL_MOCK_PROFILES.filter((mock) => !existingIds.has(mock.id))
-
-    if (missingMocks.length > 0 || currentMembers.length === 0) {
-      currentMembers = [...INITIAL_MOCK_PROFILES, ...currentMembers.filter(m => !INITIAL_MOCK_PROFILES.some(mock => mock.id === m.id))]
-      localStorage.setItem('team_members', JSON.stringify(currentMembers))
-    }
-
-    setMembers(currentMembers)
+    fetchApprovedMembers()
   }, [])
 
-  const approvedMembers = members.filter((m) => {
-    const isApproved = m.status === 'approved' || !m.status
+  const filteredMembers = members.filter((m) => {
     const matchesDomain = selectedDomain === 'All' || m.domain === selectedDomain
     const matchesPosition = selectedPosition === 'All' || m.position === selectedPosition
-    const matchesSearch = m.name.toLowerCase().includes(searchQuery.toLowerCase()) || m.bio.toLowerCase().includes(searchQuery.toLowerCase())
-    return isApproved && matchesDomain && matchesPosition && matchesSearch
+    const matchesSearch = (m.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (m.bio || '').toLowerCase().includes(searchQuery.toLowerCase())
+    return matchesDomain && matchesPosition && matchesSearch
   })
 
   return (
@@ -233,14 +230,14 @@ export default function TeamDirectoryPage() {
       {/* Minecraft Fonts */}
       <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Silkscreen&display=swap" rel="stylesheet" />
 
-      {/* Deep Ocean Blue-Green Glows */}
+      {/* Deep Ocean Glows */}
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
         <div className="absolute -top-40 -left-40 w-[600px] h-[600px] bg-teal-600/10 rounded-full blur-[160px] animate-pulse" />
         <div className="absolute -bottom-40 -right-40 w-[650px] h-[650px] bg-cyan-600/10 rounded-full blur-[170px] animate-pulse" />
         <div className="absolute inset-0 bg-[radial-gradient(#1E293B_1px,transparent_1px)] [background-size:24px_24px] opacity-40" />
       </div>
 
-      {/* --- SWIMMING BIOLUMINESCENT SEA CREATURES & MAMMALS --- */}
+      {/* Swimming Creatures */}
       <div className="pointer-events-none fixed inset-0 z-10 overflow-hidden">
         {creatures.map((c) => (
           <div
@@ -258,7 +255,6 @@ export default function TeamDirectoryPage() {
                 <ellipse cx="85" cy="30" rx="4" ry="4" fill="#E0F2FE"/>
               </svg>
             )}
-
             {c.id === 'manta' && (
               <svg width="100" height="70" viewBox="0 0 110 80" className="drop-shadow-[0_0_22px_#2DD4BF]">
                 <path d="M 55 10 L 100 45 Q 55 55 10 45 Z" fill="#0F766E" stroke="#2DD4BF" strokeWidth="2.5"/>
@@ -266,28 +262,24 @@ export default function TeamDirectoryPage() {
                 <circle cx="45" cy="25" r="3" fill="#E0F2FE"/>
               </svg>
             )}
-
             {c.id === 'turtle' && (
               <svg width="85" height="55" viewBox="0 0 90 60" className="drop-shadow-[0_0_18px_#34D399]">
                 <ellipse cx="45" cy="30" rx="25" ry="18" fill="#065F46" stroke="#34D399" strokeWidth="2.5"/>
                 <circle cx="75" cy="30" r="8" fill="#10B981" stroke="#34D399" strokeWidth="2"/>
               </svg>
             )}
-
             {c.id === 'angler' && (
               <svg width="75" height="55" viewBox="0 0 80 60" className="drop-shadow-[0_0_18px_#F59E0B]">
                 <path d="M 20 30 Q 40 10 65 30 Q 40 50 20 30 Z" fill="#1E1B4B" stroke="#F59E0B" strokeWidth="2"/>
                 <circle cx="70" cy="5" r="4" fill="#FDE047" className="animate-ping"/>
               </svg>
             )}
-
             {c.id === 'jelly1' && (
               <svg width="60" height="80" viewBox="0 0 80 100" className="drop-shadow-[0_0_18px_#38BDF8]">
                 <path d="M 15 40 Q 40 5 65 40 Z" fill="#0284C7" stroke="#38BDF8" strokeWidth="2"/>
                 <path d="M 40 45 Q 40 75 38 95" stroke="#2DD4BF" strokeWidth="2.5"/>
               </svg>
             )}
-
             <span 
               className="text-[8px] font-mono text-teal-300 bg-black/70 px-1.5 py-0.5 mt-1 border border-teal-500/30 whitespace-nowrap"
               style={{ transform: `scaleX(${c.facingRight ? 1 : -1})` }}
@@ -298,7 +290,7 @@ export default function TeamDirectoryPage() {
         ))}
       </div>
 
-      {/* Eywa Cursor Particles */}
+      {/* Eywa Particles */}
       {eywaSeeds.map((seed) => (
         <div
           key={seed.id}
@@ -319,7 +311,7 @@ export default function TeamDirectoryPage() {
 
       <div className="max-w-7xl mx-auto relative z-20">
         
-        {/* Header Section */}
+        {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6 border-b-2 border-[#1E293B] pb-8">
           <div>
             <div 
@@ -357,7 +349,7 @@ export default function TeamDirectoryPage() {
           </div>
         </div>
 
-        {/* Filter & Search Bar */}
+        {/* Filters */}
         <div className="bg-[#0B132B]/80 backdrop-blur-xl border-2 border-[#1E293B] p-6 rounded-none shadow-[4px_4px_0px_#030712] mb-10 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
@@ -412,8 +404,8 @@ export default function TeamDirectoryPage() {
           </div>
         </div>
 
-        {/* Team Grid */}
-        {approvedMembers.length === 0 ? (
+        {/* Members Grid */}
+        {filteredMembers.length === 0 ? (
           <div className="text-center py-20 bg-[#0B132B]/40 border-2 border-[#1E293B] rounded-none">
             <p className="text-[#94A3B8] text-sm mb-4 font-mono">No approved team members match your filter criteria.</p>
             <button
@@ -426,7 +418,7 @@ export default function TeamDirectoryPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {approvedMembers.map((member) => (
+            {filteredMembers.map((member) => (
               <div
                 key={member.id}
                 className="group bg-[#0B132B]/75 hover:bg-[#111C3A] border-2 border-[#1E293B] hover:border-teal-400 transition-all duration-200 rounded-none p-6 flex flex-col justify-between shadow-[4px_4px_0px_#030712]"
@@ -435,7 +427,7 @@ export default function TeamDirectoryPage() {
                   <div className="flex items-center gap-4 mb-5">
                     <div className="w-16 h-16 bg-[#132247] flex-shrink-0 border-2 border-teal-500/60 shadow-inner overflow-hidden">
                       <img
-                        src={member.avatar_url || 'https://api.dicebear.com/7.x/bottts/svg?seed=' + member.name}
+                        src={member.photo_url || member.avatar_url || 'https://api.dicebear.com/7.x/bottts/svg?seed=' + member.name}
                         alt={member.name}
                         className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                       />
@@ -462,13 +454,13 @@ export default function TeamDirectoryPage() {
                 <div className="pt-4 border-t-2 border-[#1E293B] flex items-center justify-between text-[11px] text-[#64748B]">
                   <span className="font-mono text-[#475569]">{member.srn}</span>
                   <div className="flex items-center gap-3 font-bold">
-                    {member.linkedin && (
-                      <a href={member.linkedin} target="_blank" rel="noopener noreferrer" className="hover:text-teal-400 transition">
+                    {member.linkedin_url && (
+                      <a href={member.linkedin_url} target="_blank" rel="noopener noreferrer" className="hover:text-teal-400 transition">
                         LinkedIn ↗
                       </a>
                     )}
-                    {member.github && (
-                      <a href={member.github} target="_blank" rel="noopener noreferrer" className="hover:text-white transition">
+                    {member.github_url && (
+                      <a href={member.github_url} target="_blank" rel="noopener noreferrer" className="hover:text-white transition">
                         GitHub ↗
                       </a>
                     )}
