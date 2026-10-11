@@ -1,3 +1,7 @@
+
+
+
+
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -34,6 +38,33 @@ const DEFAULT_AVATARS = [
   { id: 'captain', label: 'Dungeon Captain', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80' },
   { id: 'navigator', label: 'Deep Navigator', url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80' },
 ]
+
+// Convert uploaded files to WebP via HTML Canvas
+const convertToWebP = (file: File): Promise<string> => {
+  return new Promise((resolve) => {
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const img = new Image()
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        canvas.width = img.width
+        canvas.height = img.height
+        const ctx = canvas.getContext('2d')
+        if (ctx) {
+          ctx.drawImage(img, 0, 0)
+          const webpDataUrl = canvas.toDataURL('image/webp', 0.8)
+          resolve(webpDataUrl)
+        } else {
+          resolve(event.target?.result as string)
+        }
+      }
+      if (event.target?.result) {
+        img.src = event.target.result as string
+      }
+    }
+    reader.readAsDataURL(file)
+  })
+}
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -139,15 +170,12 @@ export default function RegisterPage() {
     setFormData({ ...formData, [e.target.name]: e.target.value })
   }
 
-  // Handle local image file upload
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle local image file upload & convert to WebP
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setFormData((prev) => ({ ...prev, avatar_url: reader.result as string }))
-      }
-      reader.readAsDataURL(file)
+      const webpUrl = await convertToWebP(file)
+      setFormData((prev) => ({ ...prev, avatar_url: webpUrl }))
     }
   }
 
@@ -228,6 +256,7 @@ export default function RegisterPage() {
             <span className="text-[7px] font-mono text-teal-300 bg-black/70 px-1 py-0.5 mt-0.5 border border-teal-500/30 whitespace-nowrap">
               {c.name}
             </span>
+
           </div>
         ))}
       </div>
@@ -383,7 +412,7 @@ export default function RegisterPage() {
 
                 {/* Option 1: Upload from Device */}
                 <div>
-                  <label className="block text-xs text-slate-400 mb-1">Upload from Device:</label>
+                  <label className="block text-xs text-slate-400 mb-1">Upload from Device (Converted to WebP):</label>
                   <input
                     type="file"
                     accept="image/*"
@@ -518,7 +547,7 @@ export default function RegisterPage() {
                     ฿ {formData.srn ? formData.srn : 'SRN-NOT-SET'}
                   </p>
                   <p className="text-[10px] font-bold text-[#6B4423] uppercase">
-                    {formData.position} • {formData.domain}
+                    {formData.position} - {formData.domain}
                   </p>
                   <p className="text-[10px] font-mono text-[#8C5A2B]">
                     {formData.branch ? `${formData.branch} (Sem ${formData.semester || '?'})` : 'Branch & Sem'}
